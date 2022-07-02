@@ -1,5 +1,4 @@
-from pandas import Index
-from sklearn.model_selection import train_test_split
+rom pandas import Index
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,26 +18,6 @@ data.shape
 data.info()
 df = pd.DataFrame(columns=['Microservices', 'Type', 'Pass', 'Failure', 'Target'])
 data.columns = Index(['Microservices', 'Type', 'Pass', 'Failure', 'Target'], dtype=object)
-
-# Define Data
-data.Failure.plot(kind="hist", figsize=(10, 6))
-data.Failure = np.where(data.Failure == 0, 0, 1)
-data.Failure.value_counts()
-data.info()
-data.Pass.plot(kind="hist", figsize=(10, 6))
-
-print("Test finally pass or fail but most of scenario had the opposite result")
-df = data.groupby(['Type', 'Target']).Pass.nunique().reset_index()
-df1 = data.groupby(['Type', 'Target']).count()[['Pass']]
-df1.plot(figsize=(30, 10), kind='bar', color='r')
-print(df1)
-
-# Create X_train, y_train, X_test, y_test
-X = data.drop(["Target", "Microservices", "Type"], axis=1)
-y = data["Target"]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-print(X_train.shape)
-print(X_test.shape)
 
 # Separate number data
 data1 = data.drop(["Microservices", "Type"], axis=1)
@@ -67,7 +46,8 @@ Failures_model = tf.keras.Sequential([
 
 # Create a model and train it
 Failures_model.summary()
-Failures_model.predict(TargetClass[:10])
+predicts = Failures_model.predict(TargetClass[:10])
+print(predicts)
 Failures_model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.1),
     loss='mean_absolute_error')
@@ -84,6 +64,7 @@ hist = pd.DataFrame(history.history)
 hist['epoch'] = history.epoch
 hist.tail()
 
+print(hist)
 
 def plot_loss(history):
     plt.plot(history.history['loss'], label='loss')
@@ -98,10 +79,10 @@ def plot_loss(history):
 
 plot_loss(history)
 
-test_results = {}
-test_results['Failures_model'] = Failures_model.evaluate(
+test_results = {'Failures_model': Failures_model.evaluate(
     test_features['Target'],
-    test_labels, verbose=0)
+    test_labels, verbose=0)}
+print(test_results)
 x = tf.linspace(0.0, 250, 251)
 y = Failures_model.predict(x)
 
@@ -133,17 +114,46 @@ def build_and_compile_model(norm):
 
 dnn_Failures_model = build_and_compile_model(Failures_normalizer)
 dnn_Failures_model.summary()
+predicts1 = dnn_Failures_model.predict(TargetClass[:10])
+print(predicts1)
 history = dnn_Failures_model.fit(
     train_features['Target'],
     train_labels,
     validation_split=0.2,
     verbose=0, epochs=100)
+hist = pd.DataFrame(history.history)
+hist['epoch'] = history.epoch
+hist.tail()
 
+print(hist)
 plot_loss(history)
 x = tf.linspace(0.0, 250, 251)
 y = dnn_Failures_model.predict(x)
-plot_Target(x, y)
+# plot_Target(x, y)
 
 test_results['dnn_Failures_model'] = dnn_Failures_model.evaluate(
     test_features['Target'], test_labels,
     verbose=0)
+
+dnn_Failures_model.save('dnn_Failures_model')
+test_predictions = y.flatten()
+
+a = plt.axes(aspect='equal')
+plt.scatter(x, y )
+plt.xlabel('True Values [Failure]')
+plt.ylabel('Predictions [Failure]')
+lims = [0, 50]
+plt.xlim(lims)
+plt.ylim(lims)
+_ = plt.plot(lims, lims)
+
+error = y - x
+plt.hist(error, bins=25)
+plt.xlabel('Prediction Error [Failure]')
+_ = plt.ylabel('Count')
+
+reloaded = tf.keras.models.load_model('dnn_Failures_model')
+
+test_results['reloaded'] = reloaded.evaluate(
+    test_features['Target'], test_labels, verbose=0)
+print(test_results)
